@@ -8,4 +8,6 @@
         <property name="userDao" ref="userDao"/>
     </bean>
 
+    <bean class="cn.cyj.springframework.test.common.MyBeanFactoryPostProcessor"/>
+    <bean class="cn.cyj.springframework.test.common.MyBeanPostProcessor"/>
 </beans>

@@ -4,6 +4,7 @@ import cn.cyj.springframework.beans.BeansException;
 import cn.cyj.springframework.beans.PropertyValue;
 import cn.cyj.springframework.beans.PropertyValues;
 import cn.cyj.springframework.beans.factory.config.BeanDefinition;
+import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
 import cn.cyj.springframework.beans.factory.config.BeanReference;
 import cn.hutool.core.bean.BeanUtil;
 
@@ -35,7 +36,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         Object bean = createBeanInstance(beanDefinition, beanName, args);
         // 2.给对象设置属性
         applyPropertyValues(beanName, bean, beanDefinition);
-        // 3.将对象缓存起来，如果是原型类型则不用
+        // 3.初始化对象
+        bean = initializeBean(beanName, bean, beanDefinition);
+        // 4.将对象缓存起来，如果是原型类型则不用
         addSingleton(beanName, bean);
         return bean;
     }
@@ -73,6 +76,45 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         } catch (Exception e) {
             throw new BeansException("Error setting property values：" + beanName);
         }
+    }
+
+    protected Object initializeBean(String beanName, Object bean, BeanDefinition beanDefinition) {
+        // 1.调用postProcessBeforeInitialization
+        Object wrappedBean = applyBeanPostProcessorsBeforeInitialization(bean, beanName);
+        // 2.调用初始化方法(init-method)
+        invokeInitMethods(beanName, wrappedBean, beanDefinition);
+        // 3.调用postProcessAfterInitialization
+        wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
+        return wrappedBean;
+    }
+
+    public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)
+            throws BeansException {
+        Object result = existingBean;
+        for (BeanPostProcessor processor : getBeanPostProcessors()) {
+            Object current = processor.postProcessBeforeInitialization(existingBean, beanName);
+            if (current == null) {
+                return result;
+            }
+            result = current;
+        }
+        return existingBean;
+    }
+
+    public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName) {
+        Object result = existingBean;
+        for (BeanPostProcessor processor : getBeanPostProcessors()) {
+            Object current = processor.postProcessAfterInitialization(existingBean, beanName);
+            if (current == null) {
+                return result;
+            }
+            result = current;
+        }
+        return result;
+    }
+
+    protected void invokeInitMethods(String beanName, Object bean, BeanDefinition beanDefinition) {
+        // todo
     }
 
     public InstantiationStrategy getInstantiationStrategy() {

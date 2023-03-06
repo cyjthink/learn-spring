@@ -13,12 +13,19 @@ import java.io.IOException;
 // 4.定义抽象方法loadBeanDefinitions()，交由AbstractXmlApplicationContext实现
 public abstract class AbstractRefreshableApplicationContext extends AbstractApplicationContext {
 
+    private DefaultListableBeanFactory beanFactory;
+
     @Override
     protected void refreshBeanFactory() throws BeansException, IllegalStateException {
         // 1.创建BeanFactory
-        // DefaultListableBeanFactory beanFactory = createBeanFactory();
+        DefaultListableBeanFactory beanFactory = createBeanFactory();
         // 2.加载BeanDefinition
-        // loadBeanDefinitions(beanFactory);
+        loadBeanDefinitions(beanFactory);
+        this.beanFactory = beanFactory;
+    }
+
+    protected DefaultListableBeanFactory createBeanFactory() {
+        return new DefaultListableBeanFactory();
     }
 
     @Override
@@ -28,9 +35,9 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 
     @Override
     public ConfigurableListableBeanFactory getBeanFactory() throws IllegalStateException {
-        return null;
+        return beanFactory;
     }
 
     protected abstract void loadBeanDefinitions(DefaultListableBeanFactory beanFactory)
-            throws BeansException, IOException;
+            throws BeansException;
 }

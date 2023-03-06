@@ -6,6 +6,7 @@ import cn.cyj.springframework.beans.factory.config.BeanDefinition;
 import cn.cyj.springframework.beans.factory.config.BeanReference;
 import cn.cyj.springframework.beans.factory.support.DefaultListableBeanFactory;
 import cn.cyj.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import cn.cyj.springframework.context.support.ClassPathXmlApplicationContext;
 import cn.cyj.springframework.core.io.DefaultResourceLoader;
 import cn.cyj.springframework.test.bean.UserDao;
 import cn.cyj.springframework.test.bean.UserService;
@@ -46,6 +47,14 @@ public class ApiTest {
         reader.loadBeanDefinitions("classpath:spring.xml");
 
         UserService userService = (UserService) beanFactory.getBean("userService", UserService.class);
+        userService.queryUserInfo();
+    }
+
+    @Test
+    public void testBeanFactoryPostProcessorAndBeanPostProcessor() {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("classpath:spring.xml");
+
+        UserService userService = context.getBean("userService", UserService.class);
         userService.queryUserInfo();
     }
 }
