@@ -9,4 +9,8 @@ import java.io.Closeable;
 public interface ConfigurableApplicationContext extends ApplicationContext, Lifecycle, Closeable {
 
     void refresh() throws BeansException, IllegalStateException;
+
+    void registerShutdownHook();
+
+    void close();
 }

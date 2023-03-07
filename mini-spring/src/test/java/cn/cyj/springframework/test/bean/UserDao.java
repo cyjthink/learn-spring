@@ -13,6 +13,16 @@ public class UserDao {
         hashMap.put("3", "333");
     }
 
+    public void initData() {
+        System.out.println(">>UserDao#initData call<<");
+        hashMap.put("4", "444");
+    }
+
+    public void clearData() {
+        System.out.println(">>UserDao#clearData call<<");
+        hashMap.clear();
+    }
+
     public String queryUserName(String uId) {
         return hashMap.get(uId);
     }

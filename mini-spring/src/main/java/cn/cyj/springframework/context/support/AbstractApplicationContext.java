@@ -116,8 +116,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
     }
 
     @Override
-    public void close() throws IOException {
+    public void registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
+    }
 
+    @Override
+    public void close() {
+        // spring源码中destroySingletons()是定义在ConfigurableBeanFactory接口中
+        getBeanFactory().destroySingletons();
     }
 
     protected abstract void refreshBeanFactory() throws BeansException, IllegalStateException;

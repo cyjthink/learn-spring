@@ -3,12 +3,17 @@ package cn.cyj.springframework.beans.factory.support;
 import cn.cyj.springframework.beans.BeansException;
 import cn.cyj.springframework.beans.PropertyValue;
 import cn.cyj.springframework.beans.PropertyValues;
+import cn.cyj.springframework.beans.factory.DisposableBean;
+import cn.cyj.springframework.beans.factory.InitializingBean;
 import cn.cyj.springframework.beans.factory.config.BeanDefinition;
 import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
 import cn.cyj.springframework.beans.factory.config.BeanReference;
 import cn.hutool.core.bean.BeanUtil;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+
+import cn.hutool.core.util.StrUtil;
 
 // 重点：
 // 1.bean的创建策略：InstantiationStrategy instantiationStrategy
@@ -20,6 +25,14 @@ import java.lang.reflect.Constructor;
 // 6.实现AutowireCapableBeanFactory接口中的applyBeanPostProcessorsBeforeInstantiation()，在Bean实例化之前调用BeanPostProcessors
 // 6.实现AutowireCapableBeanFactory接口中的applyBeanPostProcessorsBeforeInitialization()，在Bean初始化之前调用BeanPostProcessors
 // 7.实现AutowireCapableBeanFactory接口中的applyBeanPostProcessorsAfterInitialization()，在Bean初始化之后调用BeanPostProcessors
+// 总结：
+// 1.对象创建、初始化过程
+    // 1.1.创建对象
+    // 1.2.early cache
+    // 1.3.设置属性
+    // 1.4.调用BeanPostProcessor#postProcessBeforeInitialization()
+    // 1.5.调用初始化方法：InitializingBean#afterPropertiesSet()或init-method
+    // 1.6.调用BeanPostProcessor#postProcessAfterInitialization()
 public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFactory {
 
 //    private InstantiationStrategy instantiationStrategy = new SimpleInstantiationStrategy();
@@ -35,11 +48,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         // 1.反射创建对象
         Object bean = createBeanInstance(beanDefinition, beanName, args);
         // 2.给对象设置属性
-        applyPropertyValues(beanName, bean, beanDefinition);
+        populateBean(beanName, bean, beanDefinition);
         // 3.初始化对象
         bean = initializeBean(beanName, bean, beanDefinition);
-        // 4.将对象缓存起来，如果是原型类型则不用
+        // 4.将对象缓存起来(spring源码中是addSingletonFactory()，表示eagerly cache singletons)
         addSingleton(beanName, bean);
+        // 5.注册实现了DisoisableBean或者配置了destory-method的对象
+        registerDisposableBeanIfNecessary(beanName, bean, beanDefinition);
         return bean;
     }
 
@@ -54,6 +69,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
             }
         }
         return getInstantiationStrategy().instantiate(beanDefinition, beanName, constructorToUse, args);
+    }
+
+    protected void populateBean(String beanName, Object bean, BeanDefinition beanDefinition) {
+        applyPropertyValues(beanName, bean, beanDefinition);
     }
 
     protected void applyPropertyValues(String beanName, Object bean, BeanDefinition beanDefinition) {
@@ -82,7 +101,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         // 1.调用postProcessBeforeInitialization
         Object wrappedBean = applyBeanPostProcessorsBeforeInitialization(bean, beanName);
         // 2.调用初始化方法(init-method)
-        invokeInitMethods(beanName, wrappedBean, beanDefinition);
+        try {
+            invokeInitMethods(beanName, wrappedBean, beanDefinition);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         // 3.调用postProcessAfterInitialization
         wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
         return wrappedBean;
@@ -113,8 +136,29 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         return result;
     }
 
-    protected void invokeInitMethods(String beanName, Object bean, BeanDefinition beanDefinition) {
-        // todo
+    // 调用两种初始化方法，1.实现InitializingBean接口 2.配置init-method
+    protected void invokeInitMethods(String beanName, Object bean, BeanDefinition beanDefinition) throws Exception {
+        // 1.调用InitializingBean#afterPropertiesSet()
+        if (bean instanceof InitializingBean) {
+            ((InitializingBean) bean).afterPropertiesSet();
+        }
+
+        // 2.调用init-method(判断是为了避免二次执行销毁)
+        String initMethodName = beanDefinition.getInitMethodName();
+        if (StrUtil.isNotEmpty(initMethodName)) {
+            Method initMethod = beanDefinition.getBeanClass().getMethod(initMethodName);
+            if (null == initMethod) {
+                throw new BeansException("Could not find an init method named '" + initMethodName + "' on bean with name '" + beanName + "'");
+            }
+            initMethod.invoke(bean);
+        }
+    }
+
+    // spring源码中该方法在AbstractBeanFactory
+    protected void registerDisposableBeanIfNecessary(String beanName, Object bean, BeanDefinition beanDefinition) {
+        if (bean instanceof DisposableBean || StrUtil.isNotEmpty(beanDefinition.getDestroyMethodName())) {
+            registerDisposableBean(beanName, new DisposableBeanAdapter(bean, beanName, beanDefinition));
+        }
     }
 
     public InstantiationStrategy getInstantiationStrategy() {

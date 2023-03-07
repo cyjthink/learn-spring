@@ -1,8 +1,12 @@
 package cn.cyj.springframework.beans.factory.support;
 
+import cn.cyj.springframework.beans.BeansException;
+import cn.cyj.springframework.beans.factory.DisposableBean;
 import cn.cyj.springframework.beans.factory.config.SingletonBeanRegistry;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 // spring中的DefaultSingletonBeanRegistry继承自SimpleAliasRegistry
@@ -11,6 +15,8 @@ public class DefaultSingletonBeanRegistry implements SingletonBeanRegistry {
 
     // 这里使用了线程安全的HashMap
     private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+
+    private final Map<String, Object> disposableBeans = new LinkedHashMap<>();
 
     @Override
     public void registerSingleton(String beanName, Object singletonObject) {
@@ -38,6 +44,27 @@ public class DefaultSingletonBeanRegistry implements SingletonBeanRegistry {
     public Object getSingleton(String beanName) {
         // spring源码中还有通过singletonObjects、earlySingletonObjects获取值的判断，并加了synchronized关键字
         return this.singletonObjects.get(beanName);
+    }
+
+    public void registerDisposableBean(String beanName, DisposableBean bean) {
+        synchronized (this.disposableBeans) {
+            this.disposableBeans.put(beanName, bean);
+        }
+    }
+
+    public void destroySingletons() {
+        Set<String> keySet = this.disposableBeans.keySet();
+        Object[] disposableBeanNames = keySet.toArray();
+
+        for (int i = disposableBeanNames.length - 1; i >= 0; i--) {
+            Object beanName = disposableBeanNames[i];
+            DisposableBean disposableBean = (DisposableBean) disposableBeans.remove(beanName);
+            try {
+                disposableBean.destroy();
+            } catch (Exception e) {
+                throw new BeansException("Destroy method on bean with name '" + beanName + "' threw an exception", e);
+            }
+        }
     }
 
     @Override
