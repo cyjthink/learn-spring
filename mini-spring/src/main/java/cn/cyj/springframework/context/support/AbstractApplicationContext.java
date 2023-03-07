@@ -33,7 +33,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
         // 3.Prepare the bean factory for use in this context.
-//        prepareBeanFactory(beanFactory);
+        prepareBeanFactory(beanFactory);
 
         // 4.Allows post-processing of the bean factory in context subclasses.
 //        postProcessBeanFactory(beanFactory);
@@ -70,6 +70,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
     protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
         refreshBeanFactory();
         return getBeanFactory();
+    }
+
+    protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+        // 注册ApplicationContextAwareProcessor，实现ApplicationContextAware的功能
+        beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
     }
 
     protected void invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory beanFactory) {

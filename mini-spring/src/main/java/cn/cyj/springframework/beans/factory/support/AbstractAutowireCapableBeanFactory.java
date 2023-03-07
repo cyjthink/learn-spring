@@ -3,8 +3,7 @@ package cn.cyj.springframework.beans.factory.support;
 import cn.cyj.springframework.beans.BeansException;
 import cn.cyj.springframework.beans.PropertyValue;
 import cn.cyj.springframework.beans.PropertyValues;
-import cn.cyj.springframework.beans.factory.DisposableBean;
-import cn.cyj.springframework.beans.factory.InitializingBean;
+import cn.cyj.springframework.beans.factory.*;
 import cn.cyj.springframework.beans.factory.config.BeanDefinition;
 import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
 import cn.cyj.springframework.beans.factory.config.BeanReference;
@@ -30,6 +29,7 @@ import cn.hutool.core.util.StrUtil;
     // 1.1.创建对象
     // 1.2.early cache
     // 1.3.设置属性
+    // 1.4.调用Aware方法，如BeanFactoryAware。但ApplicationContextAware不同，它通过ApplicationContextAwareProcessor实现
     // 1.4.调用BeanPostProcessor#postProcessBeforeInitialization()
     // 1.5.调用初始化方法：InitializingBean#afterPropertiesSet()或init-method
     // 1.6.调用BeanPostProcessor#postProcessAfterInitialization()
@@ -98,17 +98,36 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
     }
 
     protected Object initializeBean(String beanName, Object bean, BeanDefinition beanDefinition) {
-        // 1.调用postProcessBeforeInitialization
+        // 1.调用aware方法
+        invokeAwareMethods(beanName, bean);
+        // 2.调用postProcessBeforeInitialization
         Object wrappedBean = applyBeanPostProcessorsBeforeInitialization(bean, beanName);
-        // 2.调用初始化方法(init-method)
+        // 3.调用初始化方法(init-method)
         try {
             invokeInitMethods(beanName, wrappedBean, beanDefinition);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        // 3.调用postProcessAfterInitialization
+        // 4.调用postProcessAfterInitialization
         wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
         return wrappedBean;
+    }
+
+    private void invokeAwareMethods(String beanName, Object bean) {
+        if (bean instanceof Aware) {
+            if (bean instanceof BeanNameAware) {
+                ((BeanNameAware) bean).setBeanName(beanName);
+            }
+            if (bean instanceof BeanClassLoaderAware) {
+                ClassLoader bcl = getBeanClassLoader();
+                if (bcl != null) {
+                    ((BeanClassLoaderAware) bean).setBeanClassLoader(bcl);
+                }
+            }
+            if (bean instanceof BeanFactoryAware) {
+                ((BeanFactoryAware) bean).setBeanFactory(AbstractAutowireCapableBeanFactory.this);
+            }
+        }
     }
 
     public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)

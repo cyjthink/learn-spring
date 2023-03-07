@@ -8,6 +8,7 @@ import cn.cyj.springframework.beans.factory.support.DefaultListableBeanFactory;
 import cn.cyj.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import cn.cyj.springframework.context.support.ClassPathXmlApplicationContext;
 import cn.cyj.springframework.core.io.DefaultResourceLoader;
+import cn.cyj.springframework.test.aware.MyAware;
 import cn.cyj.springframework.test.bean.UserDao;
 import cn.cyj.springframework.test.bean.UserService;
 import org.junit.Before;
@@ -65,5 +66,12 @@ public class ApiTest {
 
         UserService userService = context.getBean("userService", UserService.class);
         userService.queryUserInfo();
+    }
+
+    @Test
+    public void testAware() {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("classpath:spring.xml");
+
+        MyAware myAware = context.getBean("myAware", MyAware.class);
     }
 }

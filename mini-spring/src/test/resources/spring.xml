@@ -11,6 +11,8 @@
         <property name="userDao" ref="userDao"/>
     </bean>
 
+    <bean id="myAware" class="cn.cyj.springframework.test.aware.MyAware"/>
+
 <!--    <bean class="cn.cyj.springframework.test.common.MyBeanFactoryPostProcessor"/>-->
 <!--    <bean class="cn.cyj.springframework.test.common.MyBeanPostProcessor"/>-->
 </beans>

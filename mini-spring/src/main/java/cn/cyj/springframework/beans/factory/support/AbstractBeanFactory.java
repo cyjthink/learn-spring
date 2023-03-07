@@ -5,6 +5,7 @@ import cn.cyj.springframework.beans.factory.BeanFactory;
 import cn.cyj.springframework.beans.factory.config.BeanDefinition;
 import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
 import cn.cyj.springframework.beans.factory.config.ConfigurableBeanFactory;
+import cn.cyj.springframework.util.ClassUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,8 @@ import java.util.List;
 // 5.AbstractBeanFactory继承自DefaultSingletonBeanRegistry，拥有了操作单例的能力
 // 6.spring源码中AbstractBeanFactory会继承FactoryBeanRegistrySupport，该类提供了FactoryBean相关的注册和获取方法。通过FactoryBean可以将普通Bean转换为工厂Bean
 public abstract class AbstractBeanFactory extends DefaultSingletonBeanRegistry implements ConfigurableBeanFactory {
+
+    private ClassLoader beanClassLoader = ClassUtils.getDefaultClassLoader();
 
     private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<BeanPostProcessor>();
 
@@ -53,6 +56,11 @@ public abstract class AbstractBeanFactory extends DefaultSingletonBeanRegistry i
             beanPostProcessors.remove(beanPostProcessor);
             beanPostProcessors.add(beanPostProcessor);
         }
+    }
+
+    @Override
+    public ClassLoader getBeanClassLoader() {
+        return this.beanClassLoader;
     }
 
     public List<BeanPostProcessor> getBeanPostProcessors() {
