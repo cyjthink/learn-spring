@@ -51,10 +51,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
         populateBean(beanName, bean, beanDefinition);
         // 3.初始化对象
         bean = initializeBean(beanName, bean, beanDefinition);
-        // 4.将对象缓存起来(spring源码中是addSingletonFactory()，表示eagerly cache singletons)
-        addSingleton(beanName, bean);
-        // 5.注册实现了DisoisableBean或者配置了destory-method的对象
+        // 4.注册实现了DisoisableBean或者配置了destory-method的对象
         registerDisposableBeanIfNecessary(beanName, bean, beanDefinition);
+        // 5.如果是单例则将对象缓存起来(spring源码中是addSingletonFactory()，表示eagerly cache singletons)
+        if (beanDefinition.isSingleton()) {
+            addSingleton(beanName, bean);
+        }
         return bean;
     }
 
@@ -175,6 +177,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
     // spring源码中该方法在AbstractBeanFactory
     protected void registerDisposableBeanIfNecessary(String beanName, Object bean, BeanDefinition beanDefinition) {
+        // 非Singleton类型的bean不执行销毁方法
+        if (!beanDefinition.isSingleton()) return;
+
         if (bean instanceof DisposableBean || StrUtil.isNotEmpty(beanDefinition.getDestroyMethodName())) {
             registerDisposableBean(beanName, new DisposableBeanAdapter(bean, beanName, beanDefinition));
         }
