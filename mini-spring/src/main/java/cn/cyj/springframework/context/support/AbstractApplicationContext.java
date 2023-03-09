@@ -4,10 +4,17 @@ import cn.cyj.springframework.beans.BeansException;
 import cn.cyj.springframework.beans.factory.ConfigurableListableBeanFactory;
 import cn.cyj.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
+import cn.cyj.springframework.context.ApplicationEvent;
+import cn.cyj.springframework.context.ApplicationListener;
 import cn.cyj.springframework.context.ConfigurableApplicationContext;
+import cn.cyj.springframework.context.event.ApplicationEventMulticaster;
+import cn.cyj.springframework.context.event.ContextClosedEvent;
+import cn.cyj.springframework.context.event.ContextRefreshedEvent;
+import cn.cyj.springframework.context.event.SimpleApplicationEventMulticaster;
 import cn.cyj.springframework.core.io.DefaultResourceLoader;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
 // 重要方法：
@@ -23,6 +30,10 @@ import java.util.Map;
 // 因为BeanFactoryPostProcessor只在AbstractApplicationContext#refresh()中调用一次，而BeanPostProcessor是针对每个Bean生效
 public abstract class AbstractApplicationContext extends DefaultResourceLoader
         implements ConfigurableApplicationContext {
+
+    private ApplicationEventMulticaster applicationEventMulticaster;
+
+    public static final String APPLICATION_EVENT_MULTICASTER_BEAN_NAME = "applicationEventMulticaster";
 
     @Override
     public void refresh() throws BeansException, IllegalStateException {
@@ -49,20 +60,20 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
         // 7.Initialize message source for this context.
 //        initMessageSource();
 
-        // 8.Initialize event multicaster for this context.
-//        initApplicationEventMulticaster();
+        // 8.初始化ApplicationEventMulticaster
+        initApplicationEventMulticaster();
 
         // 9.Initialize other special beans in specific context subclasses.
 //        onRefresh();
 
-        // 10.Check for listener beans and register them.
-//        registerListeners();
+        // 10.注册ApplicationListener
+        registerListeners();
 
         // 11.实例化所有非懒加载的单例Bean对象
         finishBeanFactoryInitialization(beanFactory);
 
         // 12.Last step: publish corresponding event.
-//        finishRefresh();
+        finishRefresh();
     }
 
     protected void prepareRefresh() {}
@@ -91,8 +102,26 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
         }
     }
 
+    protected void initApplicationEventMulticaster() {
+        ConfigurableListableBeanFactory beanFactory = getBeanFactory();
+        this.applicationEventMulticaster = new SimpleApplicationEventMulticaster(beanFactory);
+        beanFactory.registerSingleton(APPLICATION_EVENT_MULTICASTER_BEAN_NAME, this.applicationEventMulticaster);
+    }
+
+    protected void registerListeners() {
+        Collection<ApplicationListener> applicationListeners = getBeansOfType(ApplicationListener.class).values();
+        for (ApplicationListener listener : applicationListeners) {
+            this.applicationEventMulticaster.addApplicationListener(listener);
+        }
+    }
+
     protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
         beanFactory.preInstantiateSingletons();
+    }
+
+    protected void finishRefresh() {
+        // 发布容器refresh完毕事件
+        publishEvent(new ContextRefreshedEvent(this));
     }
 
     @Override
@@ -127,8 +156,24 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
     @Override
     public void close() {
+        // 发布关闭容器事件
+        publishEvent(new ContextClosedEvent(this));
+
         // spring源码中destroySingletons()是定义在ConfigurableBeanFactory接口中
         getBeanFactory().destroySingletons();
+    }
+
+    @Override
+    public void publishEvent(ApplicationEvent event) {
+        getApplicationEventMulticaster().multicastEvent(event);
+    }
+
+    ApplicationEventMulticaster getApplicationEventMulticaster() throws IllegalStateException {
+        if (this.applicationEventMulticaster == null) {
+            throw new IllegalStateException("ApplicationEventMulticaster not initialized - " +
+                    "call 'refresh' before multicasting events via the context: " + this);
+        }
+        return this.applicationEventMulticaster;
     }
 
     protected abstract void refreshBeanFactory() throws BeansException, IllegalStateException;

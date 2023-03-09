@@ -15,4 +15,6 @@
 
 <!--    <bean class="cn.cyj.springframework.test.common.MyBeanFactoryPostProcessor"/>-->
 <!--    <bean class="cn.cyj.springframework.test.common.MyBeanPostProcessor"/>-->
+
+    <bean class="cn.cyj.springframework.test.listener.RegisterSuccessListener"/>
 </beans>

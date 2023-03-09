@@ -11,6 +11,7 @@ import cn.cyj.springframework.core.io.DefaultResourceLoader;
 import cn.cyj.springframework.test.aware.MyAware;
 import cn.cyj.springframework.test.bean.UserDao;
 import cn.cyj.springframework.test.bean.UserService;
+import cn.cyj.springframework.test.event.RegisterSuccessEvent;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -71,7 +72,17 @@ public class ApiTest {
     @Test
     public void testAware() {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("classpath:spring.xml");
+        context.registerShutdownHook();
 
         MyAware myAware = context.getBean("myAware", MyAware.class);
+    }
+
+    @Test
+    public void testEvent() {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("classpath:spring.xml");
+        context.registerShutdownHook();
+
+        System.out.println(">>ApplicationContext发送RegisterSuccessEvent事件");
+        context.publishEvent(new RegisterSuccessEvent(context, "233", String.valueOf(System.currentTimeMillis())));
     }
 }
