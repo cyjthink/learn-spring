@@ -1,7 +1,7 @@
 package cn.cyj.springframework.beans.factory.support;
 
 import cn.cyj.springframework.beans.BeansException;
-import cn.cyj.springframework.beans.factory.BeanFactory;
+import cn.cyj.springframework.beans.factory.FactoryBean;
 import cn.cyj.springframework.beans.factory.config.BeanDefinition;
 import cn.cyj.springframework.beans.factory.config.BeanPostProcessor;
 import cn.cyj.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -17,7 +17,7 @@ import java.util.List;
 // 4.定义了抽象方法getBeanDefinition()，交由DefaultListableBeanFactory实现
 // 5.AbstractBeanFactory继承自DefaultSingletonBeanRegistry，拥有了操作单例的能力
 // 6.spring源码中AbstractBeanFactory会继承FactoryBeanRegistrySupport，该类提供了FactoryBean相关的注册和获取方法。通过FactoryBean可以将普通Bean转换为工厂Bean
-public abstract class AbstractBeanFactory extends DefaultSingletonBeanRegistry implements ConfigurableBeanFactory {
+public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport implements ConfigurableBeanFactory {
 
     private ClassLoader beanClassLoader = ClassUtils.getDefaultClassLoader();
 
@@ -40,14 +40,32 @@ public abstract class AbstractBeanFactory extends DefaultSingletonBeanRegistry i
 
     protected <T> T doGetBean(String name, Class<T> requiredType, Object[] args, boolean typeCheckOnly) {
         // spring源码中还有很多的逻辑
-        Object bean = getSingleton(name);
-        if (bean != null) {
-            return (T) bean;
+        Object sharedInstance = getSingleton(name);
+        if (sharedInstance != null) {
+            return (T) getObjectForBeanInstance(sharedInstance, name);
         }
 
         // 模版方法getBeanDefinition()与createBean()，具体交由子类实现，实现类职能的分离
         BeanDefinition beanDefinition = getBeanDefinition(name);
-        return (T) createBean(name, beanDefinition, args);
+        Object bean = createBean(name, beanDefinition, args);
+        return (T) getObjectForBeanInstance(bean, name);
+    }
+
+    // 根据给定的beanInstance获取object：
+    // 若beanInstance为FactoryBean，则返回beanInstance#getObject()；否则返回beanInstance
+    private Object getObjectForBeanInstance(Object beanInstance, String beanName) {
+        // 当beanInstance不是FactoryBean类型时，直接返回beanInstance
+        if (!(beanInstance instanceof FactoryBean)) {
+            return beanInstance;
+        }
+
+        Object object = getCachedObjectForFactoryBean(beanName);
+
+        if (object == null) {
+            FactoryBean<?> factory = (FactoryBean<?>) beanInstance;
+            object = getObjectFromFactoryBean(factory, beanName);
+        }
+        return object;
     }
 
     @Override

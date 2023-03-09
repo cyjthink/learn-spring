@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // 该类实现了注册、获取等单例的能力
 public class DefaultSingletonBeanRegistry implements SingletonBeanRegistry {
 
+    protected static final Object NULL_OBJECT = new Object();
+
     // 这里使用了线程安全的HashMap
     private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
